@@ -1,0 +1,28 @@
+{
+  "name": "tuentichallenge8",
+  "version": "1.0.0",
+  "description": "My solutions to the Tuenti Challenge 8 (in JS)",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kutyel/TuentiChallenge8.git"
+  },
+  "keywords": [
+    "challenge",
+    "javascript",
+    "fp"
+  ],
+  "author": "kutyel <flaviocorpa@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/kutyel/TuentiChallenge8/issues"
+  },
+  "homepage": "https://github.com/kutyel/TuentiChallenge8#readme",
+  "dependencies": {
+    "byline": "^5.0.0",
+    "ramda": "^0.25.0"
+  }
+}
