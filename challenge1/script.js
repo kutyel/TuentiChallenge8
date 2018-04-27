@@ -1,18 +1,16 @@
-const fs = require('fs')
-const byline = require('byline')
+import { createReadStream, createWriteStream } from 'fs'
+import { createStream } from 'byline'
+import { compose, map, split, toString } from 'ramda'
 
-const read = fs.createReadStream('./submitInput.txt')
-const write = fs.createWriteStream('./submitOutput.txt')
-const stream = byline.createStream(read)
+const read = createReadStream('./submitInput.txt')
+const write = createWriteStream('./submitOutput.txt')
+const stream = createStream(read)
 
 let test = 0
 
 stream.on('data', line => {
   if (test > 0) {
-    const [n, m] = line
-      .toString()
-      .split(' ')
-      .map(Number)
+    const [n, m] = compose(map(Number), split(' '), toString)(line)
     const result = (n - 1) * (m - 1)
     write.write(`Case #${test}: ${result}\n`)
   }

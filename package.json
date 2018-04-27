@@ -23,10 +23,12 @@
   },
   "homepage": "https://github.com/kutyel/TuentiChallenge8#readme",
   "dependencies": {
+    "big-integer": "^1.6.28",
     "byline": "^5.0.0",
     "ramda": "^0.25.0"
   },
   "devDependencies": {
+    "babel-preset-env": "^1.6.1",
     "eslint-config-standard": "^11.0.0",
     "eslint-plugin-import": "^2.11.0",
     "eslint-plugin-node": "^6.0.1",
