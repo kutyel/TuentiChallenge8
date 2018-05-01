@@ -1,6 +1,6 @@
-import { createReadStream, createWriteStream } from 'fs'
-import { createStream } from 'byline'
-import { compose, head, map, split, toString, trim } from 'ramda'
+const { createReadStream, createWriteStream } = require('fs')
+const { createStream } = require('byline')
+const { allPass, compose, map, split, toString } = require('ramda')
 
 const input = createReadStream('./testInput.txt')
 const output = createWriteStream('./testOutput.txt')
@@ -14,8 +14,12 @@ const find = (X, x, line) => {
   }
 }
 
-const getNextPositions = (parent, tramp = false) => {
-  const mult = tramp ? 2 : 1
+const not = closed => node => closed.findIndex(c => equalNodes(c, node)) === -1
+const notLava = board => ({ x, y }) => board[x] && board[x][y] !== '#' // forbidden
+const outside = (n, m) => ({ x, y }) => x >= 0 && y >= 0 && x < n && y < m
+
+const getNextPositions = (parent, closed, board, n, m) => {
+  const mult = board[parent.x][parent.y] === '*' ? 2 : 1 // is trampoline
   const moves = [
     { x: -2, y: -1 },
     { x: -2, y: +1 },
@@ -26,13 +30,15 @@ const getNextPositions = (parent, tramp = false) => {
     { x: +2, y: -1 },
     { x: +2, y: +1 }
   ]
-  return moves.map(({ x, y }) => ({
-    x: parent.x + x * mult,
-    y: parent.y + y * mult,
-    g: -1,
-    h: -1,
-    parent
-  }))
+  return moves
+    .map(({ x, y }) => ({
+      x: parent.x + x * mult,
+      y: parent.y + y * mult,
+      g: -1,
+      h: -1,
+      parent
+    }))
+    .filter(allPass([not(closed), notLava(board), outside(n, m)]))
 }
 
 const getManhattanDistance = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y)
@@ -63,7 +69,7 @@ const recalculateFactors = (origin, current, destination) => {
   current.h = calculateH(current, destination)
 }
 
-const countMovesFromTo = (origin, destination) => {
+const countMovesFromTo = (origin, destination, board, n, m) => {
   /**
    * My own A* algorithm implementation 😎
    */
@@ -78,7 +84,7 @@ const countMovesFromTo = (origin, destination) => {
     const extracted = opened.shift()
     closed.push(extracted)
     // Step 2
-    const nextCells = getNextPositions(extracted)
+    const nextCells = getNextPositions(extracted, closed, board, n, m)
     // Step 3
     for (const cell of nextCells) {
       if (equalNodes(cell, destination)) {
@@ -103,11 +109,11 @@ const countMovesFromTo = (origin, destination) => {
   }
 }
 
-const newTest = compose(head, map(Number), split(' '), trim, toString)
+const getFrontiers = compose(map(Number), split(' '), toString)
 
-const getMinPath = (s, p, d) => {
-  const sToP = countMovesFromTo(s, p)
-  const pToD = countMovesFromTo(p, d)
+const getMinPath = (s, p, d, board, n, m) => {
+  const sToP = countMovesFromTo(s, p, board, n, m)
+  const pToD = countMovesFromTo(p, d, board, n, m)
   return sToP === -1 || pToD === -1 ? 'IMPOSSIBLE' : sToP + pToD
 }
 
@@ -115,6 +121,7 @@ let test = 1
 let line = 0
 let board = []
 let n = 0
+let m = 0
 let i = 0
 let S = { g: -1, h: -1, x: 0, y: 0, id: 'S' } // Knight
 let P = { g: -1, h: -1, x: 0, y: 0, id: 'P' } // Princess
@@ -122,7 +129,7 @@ let D = { g: -1, h: -1, x: 0, y: 0, id: 'D' } // Exit
 
 stream.on('data', str => {
   if (line === 1) {
-    n = newTest(str)
+    ;[n, m] = getFrontiers(str)
   } else if (n > 0 && i < n) {
     const row = compose(split(''), toString)(str)
     find(S, i, row)
@@ -132,10 +139,10 @@ stream.on('data', str => {
     i++
   } else if (line > 0 && i === n) {
     // Perform logic
-    const result = getMinPath(S, P, D)
+    const result = getMinPath(S, P, D, board, n, m)
     // console.log({ S, P, D })
     output.write(`Case #${test}: ${result}\n`)
-    n = newTest(str)
+    ;[n, m] = getFrontiers(str)
     i = 0
     test++
   }
