@@ -1,9 +1,9 @@
-const { createReadStream, createWriteStream } = require('fs')
-const { createStream } = require('byline')
-const { allPass, compose, map, split, toString } = require('ramda')
+import { createReadStream, createWriteStream } from 'fs'
+import { createStream } from 'byline'
+import { allPass, and, eqProps, inc, map, path } from 'ramda'
 
-const input = createReadStream('./testInput.txt')
-const output = createWriteStream('./testOutput.txt')
+const input = createReadStream('./submitInput.txt')
+const output = createWriteStream('./submitOutput.txt')
 const stream = createStream(input)
 
 const find = (X, x, line) => {
@@ -13,13 +13,11 @@ const find = (X, x, line) => {
     X.y = y
   }
 }
-
-const not = closed => node => closed.findIndex(c => equalNodes(c, node)) === -1
-const notLava = board => ({ x, y }) => board[x] && board[x][y] !== '#' // forbidden
-const outside = (n, m) => ({ x, y }) => x >= 0 && y >= 0 && x < n && y < m
-
+const open = closed => node => closed.findIndex(c => equal(c, node)) === -1
+const inside = (n, m) => ({ x, y }) => and(x >= 0 && y >= 0, x < n && y < m)
+const notLava = board => ({ x, y }) => path([x, y], board) !== '#' // forbidden
 const getNextPositions = (parent, closed, board, n, m) => {
-  const mult = board[parent.x][parent.y] === '*' ? 2 : 1 // is trampoline
+  const mult = path([parent.x, parent.y], board) === '*' ? 2 : 1 // is trampoline
   const moves = [
     { x: -2, y: -1 },
     { x: -2, y: +1 },
@@ -38,46 +36,31 @@ const getNextPositions = (parent, closed, board, n, m) => {
       h: -1,
       parent
     }))
-    .filter(allPass([not(closed), notLava(board), outside(n, m)]))
+    .filter(allPass([open(closed), notLava(board), inside(n, m)])) // B) and C)
 }
-
-const getManhattanDistance = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y)
-
-const getStepsUpToRoot = cell => {
-  let steps = 0
-  let next = cell
-  while (next.parent) {
-    next = next.parent
-    steps++
-  }
-  return steps
-}
-
-const equalNodes = (a, b) => a.x === b.x && a.y === b.y
-
+const getSteps = ({ parent }, steps = 0) =>
+  !parent ? steps : getSteps(parent, inc(steps))
+const equal = (a, b) => and(eqProps('x', a, b), eqProps('y', a, b))
 const calculateG = (origin, current, cost = 24) =>
-  equalNodes(origin, current)
+  equal(origin, current)
     ? 0
-    : equalNodes(current.parent, origin)
+    : equal(current.parent, origin)
       ? cost
       : current.parent.g + cost
-
-const calculateH = getManhattanDistance
-
+const calculateH = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y) // Manhattan distance
 const recalculateFactors = (origin, current, destination) => {
   current.g = calculateG(origin, current)
   current.h = calculateH(current, destination)
 }
-
-const countMovesFromTo = (origin, destination, board, n, m) => {
-  /**
-   * My own A* algorithm implementation 😎
-   */
+/**
+ * My own implementation of the A* algorithm 😎
+ * https://www.lanshor.com/pathfinding-a-estrella/
+ */
+const findPath = (from, to, board, n, m) => {
   let opened = []
   let closed = []
   // Step 0
-  opened.push(origin)
-
+  opened.push(from)
   while (true) {
     if (!opened.length) return -1
     // Step 1
@@ -87,20 +70,18 @@ const countMovesFromTo = (origin, destination, board, n, m) => {
     const nextCells = getNextPositions(extracted, closed, board, n, m)
     // Step 3
     for (const cell of nextCells) {
-      if (equalNodes(cell, destination)) {
-        // reached destination!
-        cell.parent = extracted
-        return getStepsUpToRoot(cell)
-      } else if (opened.findIndex(c => equalNodes(c, cell)) > -1) {
+      if (equal(cell, to)) {
+        return getSteps(cell) // A) reached destination! 🎉
+      } else if (opened.findIndex(c => equal(c, cell)) > -1) {
         const currentG = cell.g
-        const newG = calculateG(origin, cell)
+        const newG = calculateG(from, cell) // D)
         if (newG < currentG) {
           cell.parent = extracted
-          recalculateFactors(origin, cell, destination)
+          recalculateFactors(from, cell, to)
         }
       } else {
         cell.parent = extracted
-        recalculateFactors(origin, cell, destination)
+        recalculateFactors(from, cell, to) // E)
         opened.push(cell)
       }
     }
@@ -108,12 +89,9 @@ const countMovesFromTo = (origin, destination, board, n, m) => {
     opened.sort((a, b) => a.g + a.h - (b.g + b.h))
   }
 }
-
-const getFrontiers = compose(map(Number), split(' '), toString)
-
-const getMinPath = (s, p, d, board, n, m) => {
-  const sToP = countMovesFromTo(s, p, board, n, m)
-  const pToD = countMovesFromTo(p, d, board, n, m)
+const calcMinPath = (s, p, d, board, n, m) => {
+  const sToP = findPath(s, p, board, n, m)
+  const pToD = findPath(p, d, board, n, m)
   return sToP === -1 || pToD === -1 ? 'IMPOSSIBLE' : sToP + pToD
 }
 
@@ -128,23 +106,24 @@ let P = { g: -1, h: -1, x: 0, y: 0, id: 'P' } // Princess
 let D = { g: -1, h: -1, x: 0, y: 0, id: 'D' } // Exit
 
 stream.on('data', str => {
-  if (line === 1) {
-    ;[n, m] = getFrontiers(str)
-  } else if (n > 0 && i < n) {
-    const row = compose(split(''), toString)(str)
-    find(S, i, row)
-    find(P, i, row)
-    find(D, i, row)
-    board[i] = row
-    i++
-  } else if (line > 0 && i === n) {
-    // Perform logic
-    const result = getMinPath(S, P, D, board, n, m)
-    // console.log({ S, P, D })
-    output.write(`Case #${test}: ${result}\n`)
-    ;[n, m] = getFrontiers(str)
-    i = 0
-    test++
+  if (and(line > 0, i === 0 && n === 0)) {
+    ;[n, m] = map(Number, str.toString().split(' '))
+  } else if (and(n > 0, i <= n)) {
+    if (i < n) {
+      const row = str.toString().split('')
+      find(S, i, row)
+      find(P, i, row)
+      find(D, i, row)
+      board[i] = row
+      i++
+    }
+    if (i === n) {
+      const result = calcMinPath(S, P, D, board, n, m)
+      console.log(`Case #${test}: ${result}`) // TODO: remove
+      output.write(`Case #${test}: ${result}\n`)
+      ;[n, i] = [0, 0]
+      test++
+    }
   }
   line++
 })

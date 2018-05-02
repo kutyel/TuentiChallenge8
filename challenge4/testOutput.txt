@@ -97,3 +97,4 @@ Case #96: 27
 Case #97: 177
 Case #98: IMPOSSIBLE
 Case #99: 323
+Case #100: 67
