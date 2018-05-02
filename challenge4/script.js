@@ -44,9 +44,7 @@ const equal = (a, b) => and(eqProps('x', a, b), eqProps('y', a, b))
 const calculateG = (origin, current, cost = 24) =>
   equal(origin, current)
     ? 0
-    : equal(current.parent, origin)
-      ? cost
-      : current.parent.g + cost
+    : equal(current.parent, origin) ? cost : current.parent.g + cost
 const calculateH = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y) // Manhattan distance
 const recalculateFactors = (origin, current, destination) => {
   current.g = calculateG(origin, current)
@@ -119,7 +117,6 @@ stream.on('data', str => {
     }
     if (i === n) {
       const result = calcMinPath(S, P, D, board, n, m)
-      console.log(`Case #${test}: ${result}`) // TODO: remove
       output.write(`Case #${test}: ${result}\n`)
       ;[n, i] = [0, 0]
       test++

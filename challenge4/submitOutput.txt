@@ -88,3 +88,13 @@ Case #87: 305
 Case #88: 243
 Case #89: 182
 Case #90: 285
+Case #91: 220
+Case #92: 330
+Case #93: 363
+Case #94: 312
+Case #95: 363
+Case #96: 327
+Case #97: 377
+Case #98: IMPOSSIBLE
+Case #99: 323
+Case #100: 367
