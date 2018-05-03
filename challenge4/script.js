@@ -89,8 +89,9 @@ const findPath = (from, to, board, n, m) => {
 }
 const calcMinPath = (s, p, d, board, n, m) => {
   const sToP = findPath(s, p, board, n, m)
+  if (sToP === -1) return 'IMPOSSIBLE'
   const pToD = findPath(p, d, board, n, m)
-  return sToP === -1 || pToD === -1 ? 'IMPOSSIBLE' : sToP + pToD
+  return pToD === -1 ? 'IMPOSSIBLE' : sToP + pToD
 }
 
 let test = 1
